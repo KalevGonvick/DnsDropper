@@ -1,0 +1,33 @@
+server:
+  worker_thread_count: 10
+
+udp_proxy:
+  timeout: 2000
+  packet_size: 512
+  bind: "127.0.0.1:53"
+  dns_hosts:
+    - "8.8.8.8:53"
+    - "8.8.4.4:53"
+    - "1.0.0.1:53"
+    - "1.1.1.1:53"
+
+  record_type_block_list:
+    - 65
+
+  # Block list sources to keep server up-to-date on which domains to block.
+  # Can be as a file path or a URL to an online resource.
+  #
+  # list format:
+  #
+  # <ip>/s<domain>/n
+  # <ip>/s<domain>/n
+  # <ip>/s<domain>/n
+  # ...
+  domain_block_lists:
+    - https://raw.githubusercontent.com/blocklistproject/Lists/master/ads.txt
+    - config/local_block_list.txt
+
+
+logging:
+  enabled: true
+  level: "trace"

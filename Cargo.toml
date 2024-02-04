@@ -1,0 +1,40 @@
+[package]
+name = "dns_dropper"
+version = "0.0.1"
+edition = "2021"
+authors = ["kalev gonvick <kalev.gonvick@outlook.com>"]
+description = "DNS "
+license = "MIT"
+readme = "README.md"
+
+[[bin]]
+name = "dns_dropper"
+path = "src/server.rs"
+
+keywords = [
+    "dns",
+    "proxy",
+    "dns-filter",
+    "udp-filter",
+    "udp"
+]
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = "symbols"
+
+[build-dependencies.config_struct]
+version = "~0.5.0"
+features = ["yaml-parsing"]
+
+[dependencies]
+logs = "0.7.1"
+regex = "1.10.3"
+tokio = { version = "1.35.1", features = ["rt-multi-thread", "macros", "fs", "io-util", "net", "time", "sync"] }
+serde_yaml = "0.9.31"
+serde = { version = "1.0.196", features = ["derive"] }
+reqwest = { version = "0.11.24", features = [] }
+log = { version = "0.4.17", features = [] }
+env_logger = "0.11.1"
+url = "2.5.0"
