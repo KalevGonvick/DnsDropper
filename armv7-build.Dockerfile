@@ -1,6 +1,6 @@
 FROM rust:latest
 
-RUN apt update &amp;&amp; apt upgrade -y
+RUN apt update && apt upgrade -y
 RUN apt install -y g++-arm-linux-gnueabihf libc6-dev-armhf-cross
 
 RUN rustup target add armv7-unknown-linux-gnueabihf

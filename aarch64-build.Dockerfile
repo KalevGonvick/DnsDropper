@@ -1,6 +1,6 @@
 FROM rust:latest
 
-RUN apt update &amp;&amp; apt upgrade -y
+RUN apt update && apt upgrade -y
 RUN apt install -y g++-aarch64-linux-gnu libc6-dev-arm64-cross
 
 RUN rustup target add aarch64-unknown-linux-gnu
