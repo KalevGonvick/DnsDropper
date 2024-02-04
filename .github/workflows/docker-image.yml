@@ -1,18 +1,28 @@
 name: Docker Image CI
-
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "release/*" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "master", "release/*" ]
 
 jobs:
-
-  build:
-
+  build-windows:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag dns-dropper-linux:$(date +%s)
+    - name: Build for windows
+      run: docker build . --file windows-build.Dockerfile --tag dns-dropper-windows:$(date +%s)
+
+  build-armv7:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build for armv7
+        run: docker build . --file armv7-build.Dockerfile --tag dns-dropper-armv7:$(date +%s)
+
+  build-aarch64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build for aarch64
+        run: docker build . --file aarch64-build.Dockerfile --tag dns-dropper-aarch64:$(date +%s)
