@@ -1,5 +1,5 @@
 server:
-  worker_thread_count: 10
+  worker_thread_count: 4
 
 udp_proxy:
   timeout: 2000

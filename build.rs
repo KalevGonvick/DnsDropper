@@ -7,7 +7,7 @@ fn main() -> Result<(), Error> {
         format: Default::default(),
         struct_name: "ServerConfig".to_string(),
         const_name: Option::from("SERVER_CONFIG".to_string()),
-        generate_const: false,
+        generate_const: true,
         derived_traits: Vec::from(["Debug".to_string(), "Clone".to_string()]),
         serde_support: SerdeSupport::Yes,
         use_serde_derive_crate: false,

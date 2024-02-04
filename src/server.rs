@@ -172,7 +172,9 @@ async fn start_reading_from_socket(socket: Arc<UdpSocket>, proxy: Arc<DnsProxy>,
         }
     };
 
-    let res = match proxy.handle(req, len, remote_hosts.as_ref(), connection_timeout).await {
+    // TODO - setup filtering + other middleware here
+
+    let res = match proxy.dns_lookup(req, len, remote_hosts.as_ref(), connection_timeout).await {
         Ok(data) => data,
         Err(err) => {
             error!("Processing request failed {:?}", err);

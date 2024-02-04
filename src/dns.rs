@@ -699,6 +699,7 @@ impl DnsPacket {
         Ok(())
     }
 
+    // TODO - these will be used for caching stuff later
     // pub fn get_random_a(&self) -> Option<String> {
     //     if !self.answers.is_empty() {
     //         let a_record = &self.answers[0];

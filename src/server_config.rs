@@ -41,7 +41,7 @@ pub const SERVER_CONFIG: ServerConfig = ServerConfig {
         level: Cow::Borrowed("trace"),
     },
     server: _Config__server {
-        worker_thread_count: 10,
+        worker_thread_count: 4,
     },
     udp_proxy: _Config__udp_proxy {
         bind: Cow::Borrowed("127.0.0.1:53"),

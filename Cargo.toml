@@ -13,16 +13,18 @@ path = "src/server.rs"
 
 keywords = [
     "dns",
-    "proxy",
+    "dropper",
     "dns-filter",
-    "udp-filter",
+    "ad-block",
     "udp"
 ]
+
 
 [profile.release]
 lto = true
 codegen-units = 1
 strip = "symbols"
+opt-level = 3
 
 [build-dependencies.config_struct]
 version = "~0.5.0"
