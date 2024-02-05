@@ -1,40 +1,100 @@
+use std::borrow::Cow;
 use std::collections::HashSet;
-use log::info;
-use crate::logging;
-use crate::logging::HighlightStyle::DefaultHighlight;
+use std::fs;
+use std::io::{BufReader, Read};
+use log::{error, trace};
+use reqwest::StatusCode;
+use url::Url;
 
 #[derive(Hash, Eq, PartialEq, Debug)]
 pub(crate) struct Filter {
     pub address: String,
-    pub domain: String
-}
-
-impl Filter {
-    fn matches(&self, address: String, domain: String) -> bool {
-        return address.eq(&self.address) && domain.eq(&self.domain);
-    }
+    pub domain: String,
 }
 
 pub(crate) fn should_filter(domain: String, filter_list: &HashSet<Filter>) -> bool {
-    let style = logging::get_highlight_style(DefaultHighlight);
     for entry in filter_list {
         if entry.domain == domain {
-            info!("Block-List contains the name '{style}{}{style:#}'", domain);
             return true;
         }
     }
     return false;
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::dns_proxy::DnsProxy;
-    use super::*;
+pub(crate) async fn load_block_list(block_list: &[Cow<'_, str>]) -> HashSet<Filter> {
+    let mut complete_block_list: HashSet<Filter> = HashSet::new();
 
-    #[test]
-    fn filter_test() {
-        let proxy: DnsProxy = DnsProxy {
-            complete_block_list: HashSet::new(),
+    for source in block_list {
+        trace!("Found block-list source: {}", source);
+
+        match Url::parse(source) {
+            Ok(url) => {
+                if url.scheme().eq("file") {
+                    match fs::read_to_string(source.clone().into_owned()) {
+                        Ok(content) => {
+                            parse_block_list_content(&mut complete_block_list, content);
+                        }
+                        Err(err) => {
+                            error!("Error occurred while reading file '{}': {}", source, err);
+                        }
+                    };
+                } else if url.scheme().eq("http") || url.scheme().eq("https") {
+                    match reqwest::get(source.clone().into_owned()).await {
+                        Ok(res) => {
+                            trace!("Got response from block-list source: {}", source);
+                            if res.status() == StatusCode::OK {
+                                if let Ok(body) = res.text().await {
+                                    parse_block_list_content(&mut complete_block_list, body);
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            error!("Error occurred while requesting resource from '{}': {}", source, err);
+                        }
+                    };
+                }
+            }
+
+            Err(_) => {
+                trace!("Provided string '{}' is not a URL, trying as an external file.", source);
+                match fs::File::open(source.clone().into_owned()) {
+                    Ok(file) => {
+                        let mut buf_reader = BufReader::new(file);
+                        let mut body = String::new();
+                        match buf_reader.read_to_string(&mut body) {
+                            Ok(_) => {
+                                parse_block_list_content(&mut complete_block_list, body);
+                            }
+                            Err(err) => {
+                                error!("Error occurred while reading file '{}': {}", source, err);
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        error!("Error occurred while reading file '{}': {}", source, err);
+                    }
+                }
+            }
         };
+    }
+    return complete_block_list;
+}
+
+fn parse_block_list_content(
+    complete_block_list:
+    &mut std::collections::HashSet<Filter>, content: String,
+) {
+    let mut filter: Filter;
+    for line in content.lines() {
+        let split_line: Vec<&str> = line.split_whitespace().collect();
+
+        // we expect lines to follow the pattern of <addr>/s<domain>/n
+        if split_line.len() > 1 && split_line.len() < 3 {
+            filter = Filter {
+                address: split_line.get(0).unwrap().to_string(),
+                domain: split_line.get(1).unwrap().to_string(),
+            };
+            complete_block_list.insert(filter);
+        }
     }
 }

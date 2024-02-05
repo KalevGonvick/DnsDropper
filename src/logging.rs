@@ -5,23 +5,22 @@ use std::io::Write;
 use crate::logging::HighlightStyle::{DebugHighlight, ErrorHighlight, InfoHighlight, TraceHighlight, WarnHighLight};
 
 const TIMESTAMP_STYLE: Style = Style::new()
-.fg_color(Some(Color::Ansi256(Ansi256Color(8))))
-.underline();
+    .fg_color(Some(Color::Ansi256(Ansi256Color(8))))
+    .underline();
 
 const THREAD_NAME_STYLE: Style = Style::new()
-.fg_color(Some(Color::Ansi256(Ansi256Color(14))));
+    .fg_color(Some(Color::Ansi256(Ansi256Color(14))));
 
 const MODULE_INFO_STYLE: Style = Style::new()
-.fg_color(Some(Color::Ansi256(Ansi256Color(11))))
-.italic();
+    .fg_color(Some(Color::Ansi256(Ansi256Color(11))))
+    .italic();
 
 pub enum HighlightStyle {
-    DefaultHighlight,
     TraceHighlight,
     DebugHighlight,
     InfoHighlight,
     WarnHighLight,
-    ErrorHighlight
+    ErrorHighlight,
 }
 
 pub fn setup(level: &str) {
@@ -31,8 +30,6 @@ pub fn setup(level: &str) {
     env_logger::builder()
         .parse_env(level_filter)
         .format(|buf, record| {
-
-
             let level_colour: Style = match record.level() {
                 Level::Error => {
                     get_highlight_style(ErrorHighlight)
@@ -69,9 +66,6 @@ pub fn setup(level: &str) {
 
 pub fn get_highlight_style(style: HighlightStyle) -> Style {
     return match style {
-        HighlightStyle::DefaultHighlight => {
-            Style::new().fg_color(Some(Color::Ansi256(Ansi256Color(166)))).bold()
-        }
         TraceHighlight => {
             Style::new().fg_color(Some(Color::Ansi256(Ansi256Color(13)))).bold()
         }
@@ -87,5 +81,21 @@ pub fn get_highlight_style(style: HighlightStyle) -> Style {
         ErrorHighlight => {
             Style::new().fg_color(Some(Color::Ansi256(Ansi256Color(9)))).bold()
         }
-    }
+    };
+}
+
+pub(crate) fn print_title() {
+    let title_style = Style::new().fg_color(Some(Color::Ansi256(Ansi256Color(13))));
+    let art = r#"
+████████▄  ███▄▄▄▄      ▄████████      ████████▄     ▄████████  ▄██████▄     ▄███████▄    ▄███████▄    ▄████████    ▄████████
+███   ▀███ ███▀▀▀██▄   ███    ███      ███   ▀███   ███    ███ ███    ███   ███    ███   ███    ███   ███    ███   ███    ███
+███    ███ ███   ███   ███    █▀       ███    ███   ███    ███ ███    ███   ███    ███   ███    ███   ███    █▀    ███    ███
+███    ███ ███   ███   ███             ███    ███  ▄███▄▄▄▄██▀ ███    ███   ███    ███   ███    ███  ▄███▄▄▄      ▄███▄▄▄▄██▀
+███    ███ ███   ███ ▀███████████      ███    ███ ▀▀███▀▀▀▀▀   ███    ███ ▀█████████▀  ▀█████████▀  ▀▀███▀▀▀     ▀▀███▀▀▀▀▀
+███    ███ ███   ███          ███      ███    ███ ▀███████████ ███    ███   ███          ███          ███    █▄  ▀███████████
+███   ▄███ ███   ███    ▄█    ███      ███   ▄███   ███    ███ ███    ███   ███          ███          ███    ███   ███    ███
+████████▀   ▀█   █▀   ▄████████▀       ████████▀    ███    ███  ▀██████▀   ▄████▀       ▄████▀        ██████████   ███    ███
+                                                    ███    ███                                                     ███    ███
+"#;
+    println!("{title_style}{}{title_style:#}", art);
 }

@@ -27,7 +27,6 @@ udp_proxy:
     - https://raw.githubusercontent.com/blocklistproject/Lists/master/ads.txt
     - config/local_block_list.txt
 
-
 logging:
   enabled: true
   level: "trace"

@@ -329,7 +329,6 @@ impl RecordType {
             RecordType::MX => 15,
             RecordType::AAAA => 28,
             RecordType::HTTPS => 65
-
         }
     }
 
