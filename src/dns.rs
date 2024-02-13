@@ -21,39 +21,40 @@ impl BytePacketBuffer {
         self.pos
     }
 
-    fn step(&mut self, steps: usize) -> Result<()> {
+    fn step(&mut self, steps: usize) {
         self.pos += steps;
-
-        Ok(())
     }
 
-    fn seek(&mut self, pos: usize) -> Result<()> {
+    fn seek(&mut self, pos: usize) {
         self.pos = pos;
-
-        Ok(())
     }
 
     fn read(&mut self) -> Result<u8> {
+
         if self.pos >= PACKET_SIZE {
             return Err(Error::new(ErrorKind::InvalidInput, "End of buffer"));
         }
+
         let res = self.buf[self.pos];
         self.pos += 1;
-
         Ok(res)
     }
 
     fn get(&mut self, pos: usize) -> Result<u8> {
+
         if pos >= PACKET_SIZE {
             return Err(Error::new(ErrorKind::InvalidInput, "End of buffer"));
         }
+
         Ok(self.buf[pos])
     }
 
     pub fn get_range(&mut self, start: usize, len: usize) -> Result<&[u8]> {
+
         if start + len >= PACKET_SIZE {
             return Err(Error::new(ErrorKind::InvalidInput, "End of buffer"));
         }
+
         Ok(&self.buf[start..start + len])
     }
 
@@ -85,7 +86,7 @@ impl BytePacketBuffer {
                 // When a jump is performed, we only modify the shared buffer
                 // position once, and avoid making the change later on.
                 if !jumped {
-                    self.seek(pos + 2)?;
+                    self.seek(pos + 2);
                 }
 
                 let b2 = self.get(pos + 1)? as u16;
@@ -111,7 +112,7 @@ impl BytePacketBuffer {
         }
 
         if !jumped {
-            self.seek(pos)?;
+            self.seek(pos);
         }
 
         Ok(())
@@ -161,14 +162,13 @@ impl BytePacketBuffer {
         Ok(())
     }
 
-    fn set(&mut self, pos: usize, val: u8) -> Result<()> {
+    fn set(&mut self, pos: usize, val: u8) {
         self.buf[pos] = val;
-        Ok(())
     }
 
     fn set_u16(&mut self, pos: usize, val: u16) -> Result<()> {
-        self.set(pos, (val >> 8) as u8)?;
-        self.set(pos + 1, val as u8)?;
+        self.set(pos, (val >> 8) as u8);
+        self.set(pos + 1, val as u8);
         Ok(())
     }
 }
@@ -504,7 +504,7 @@ impl DnsRecord {
                 })
             }
             RecordType::UNKNOWN(_) => {
-                buffer.step(data_len as usize)?;
+                buffer.step(data_len as usize);
 
                 Ok(DnsRecord::UNKNOWN {
                     domain,
@@ -514,7 +514,7 @@ impl DnsRecord {
                 })
             }
             RecordType::HTTPS => {
-                buffer.step(data_len as usize)?;
+                buffer.step(data_len as usize);
 
                 Ok(DnsRecord::UNKNOWN {
                     domain,

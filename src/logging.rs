@@ -56,10 +56,10 @@ pub fn setup(level: &str) {
 
             writeln!(buf, "[{TIMESTAMP_STYLE}{}{TIMESTAMP_STYLE:#}][{THREAD_NAME_STYLE}{}{THREAD_NAME_STYLE:#}][{level_colour}{}{level_colour:#}][{MODULE_INFO_STYLE}{}.rs::{}{MODULE_INFO_STYLE:#}] {}",
                      ts,
-                     thread::current().name().unwrap().to_ascii_uppercase(),
+                     thread::current().name().unwrap_or_default().to_ascii_uppercase(),
                      lvl,
-                     mod_path.unwrap(),
-                     mod_line.unwrap(),
+                     mod_path.unwrap_or_default(),
+                     mod_line.unwrap_or_default(),
                      args)
         }).init();
 }
