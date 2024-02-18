@@ -6,6 +6,7 @@ mod logging;
 use std::borrow::Cow;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
+use std::env;
 use std::hash::{Hash, Hasher};
 use std::io::{Error, ErrorKind};
 use std::sync::Arc;
@@ -20,19 +21,31 @@ use crate::logging::HighlightStyle::ErrorHighlight;
 use crate::server_config::ServerConfig;
 
 fn main() -> Result<()> {
-    match ServerConfig::load_from(std::path::Path::new("config/server.yaml")) {
+    let config_dir = "CONFIG";
+    let config_base_path = match env::var(config_dir) {
+        Ok(var) => {
+            println!("ENV VAR: {}", var);
+            var
+        }
+        Err(_) => {
+            println!("Could not find environment variable for the 'config directory'. Using 'config/server.yaml' as a default.");
+            String::from("config")
+        }
+    };
+
+    let complete_config_path = config_base_path + "/server.yaml";
+    match ServerConfig::load_from(std::path::Path::new(&complete_config_path)) {
         Ok(server_config) => {
             logging::setup(server_config.logging.level.as_ref());
             logging::print_title();
             start_server(&&server_config).expect("Failed to start server");
+            Ok(())
         }
 
-        Err(err) => {
-            println!("Failed to read server.yaml: {}", err);
+        Err(_) => {
+            Err(Error::new(ErrorKind::InvalidInput, std::format!("Failed to read server.yaml from the provided path: {}", complete_config_path)))
         }
-    };
-
-    Ok(())
+    }
 }
 
 

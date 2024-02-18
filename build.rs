@@ -1,5 +1,5 @@
 use config_struct::{Error, FloatSize, IntSize, SerdeSupport, StructOptions};
-use config_struct::DynamicLoading::DebugOnly;
+use config_struct::DynamicLoading::{Always};
 
 fn main() -> Result<(), Error> {
 
@@ -7,12 +7,12 @@ fn main() -> Result<(), Error> {
         format: Default::default(),
         struct_name: "ServerConfig".to_string(),
         const_name: Option::from("SERVER_CONFIG".to_string()),
-        generate_const: true,
+        generate_const: false,
         derived_traits: Vec::from(["Debug".to_string(), "Clone".to_string()]),
         serde_support: SerdeSupport::Yes,
         use_serde_derive_crate: false,
         generate_load_fns: true,
-        dynamic_loading: DebugOnly,
+        dynamic_loading: Always,
         create_dirs: true,
         write_only_if_changed: false,
         default_float_size: FloatSize::F64,

@@ -35,25 +35,6 @@ pub struct _Config__udp_proxy {
     pub timeout: i64,
 }
 
-pub const SERVER_CONFIG: ServerConfig = ServerConfig {
-    logging: _Config__logging {
-        enabled: true,
-        level: Cow::Borrowed("trace"),
-    },
-    server: _Config__server {
-        worker_thread_count: 4,
-    },
-    udp_proxy: _Config__udp_proxy {
-        bind: Cow::Borrowed("127.0.0.1:53"),
-        dns_hosts: Cow::Borrowed(&[Cow::Borrowed("8.8.8.8:53"), Cow::Borrowed("8.8.4.4:53"), Cow::Borrowed("1.0.0.1:53"), Cow::Borrowed("1.1.1.1:53")]),
-        domain_block_lists: Cow::Borrowed(&[Cow::Borrowed("https://raw.githubusercontent.com/blocklistproject/Lists/master/ads.txt"), Cow::Borrowed("config/local_block_list.txt")]),
-        packet_size: 512,
-        record_type_block_list: Cow::Borrowed(&[65]),
-        timeout: 2000,
-    },
-};
-
-#[cfg(debug_assertions)]
 impl ServerConfig {
     pub fn load() -> Cow<'static, Self> {
         let filepath = concat!(env!("CARGO_MANIFEST_DIR"), "/config/server.yaml");
@@ -64,18 +45,5 @@ impl ServerConfig {
         let file_contents = ::std::fs::read_to_string(filepath)?;
         let result: Self = ::serde_yaml::from_str(&file_contents)?;
         Ok(Cow::Owned(result))
-    }
-}
-
-#[cfg(not(debug_assertions))]
-impl ServerConfig {
-    #[inline(always)]
-    pub fn load() -> Cow<'static, Self> {
-        Cow::Borrowed(&SERVER_CONFIG)
-    }
-
-    #[inline(always)]
-    pub fn load_from(_: &::std::path::Path) -> Result<Cow<'static, Self>, Box<dyn ::std::error::Error>> {
-        Ok(Cow::Borrowed(&SERVER_CONFIG))
     }
 }
