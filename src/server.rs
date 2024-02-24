@@ -2,39 +2,44 @@ mod dns;
 mod server_config;
 mod filter;
 mod logging;
+mod internal;
 
 use std::borrow::Cow;
-use std::collections::hash_map::DefaultHasher;
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use std::env;
-use std::hash::{Hash, Hasher};
 use std::io::{Error, ErrorKind};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
+use env_logger::fmt::style::Style;
 use tokio::io::Result;
 use tokio::net::UdpSocket;
 use tokio::time::timeout;
 
 use crate::filter::Filter;
 use crate::dns::{BytePacketBuffer, DnsPacket, ResultCode};
+use crate::internal::INTERNAL_CONFIG;
+use crate::logging::{GetStyle, HighlightStyle};
 use crate::logging::HighlightStyle::ErrorHighlight;
 use crate::server_config::ServerConfig;
 
 fn main() -> Result<()> {
-    let config_dir = "CONFIG";
-    let config_base_path = match env::var(config_dir) {
-        Ok(var) => {
-            println!("ENV VAR: {}", var);
-            var
+    let mut args: VecDeque<String> = env::args().collect();
+    let mut config_dir: String = INTERNAL_CONFIG.default_server_config_dir.to_string();
+    if args.len() > 1 {
+        args.pop_front();
+        while !args.is_empty() {
+            let arg_key: String = args.pop_front().expect("");
+            let arg_value: String = args.pop_front().expect("");
+            if arg_key.eq("--config") || arg_key.eq("-c") {
+                config_dir = arg_value;
+            }
         }
-        Err(_) => {
-            println!("Could not find environment variable for the 'config directory'. Using 'config/server.yaml' as a default.");
-            String::from("config")
-        }
-    };
+    }
 
-    let complete_config_path = config_base_path + "/server.yaml";
-    match ServerConfig::load_from(std::path::Path::new(&complete_config_path)) {
+
+
+    match ServerConfig::load_from(std::path::Path::new(&config_dir)) {
         Ok(server_config) => {
             logging::setup(server_config.logging.level.as_ref());
             logging::print_title();
@@ -43,7 +48,7 @@ fn main() -> Result<()> {
         }
 
         Err(_) => {
-            Err(Error::new(ErrorKind::InvalidInput, std::format!("Failed to read server.yaml from the provided path: {}", complete_config_path)))
+            Err(Error::new(ErrorKind::InvalidInput, std::format!("Failed to read server.yaml from the provided path: {}", config_dir)))
         }
     }
 }
@@ -52,8 +57,13 @@ fn main() -> Result<()> {
 fn start_server<'a>(config: &'a Cow<'a, ServerConfig>) -> Result<()> {
     let rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(config.server.worker_thread_count as usize)
-        .thread_name("WORKER")
-        .enable_all()
+        .thread_name_fn(||{
+            static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+            let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
+            format!("{}-{}",INTERNAL_CONFIG.worker_thread_name, id)
+        })
+        .enable_io()
+        .enable_time()
         .build()?;
 
     rt.block_on(async {
@@ -100,7 +110,7 @@ async fn start_udp_dns_listener(socket: Arc<UdpSocket>, server_config: Arc<Serve
             return;
         }
 
-        /* Lots of traffic produced when used on Windows. Why? I have no idea, I don't look forward to knowing.*/
+        /* Lots of traffic produced when using loopback configuration on Windows. Why? I have no idea and I don't look forward to knowing. */
         Err(ref e) if e.kind() == ErrorKind::ConnectionReset => {
             return;
         }
@@ -118,15 +128,16 @@ async fn start_udp_dns_listener(socket: Arc<UdpSocket>, server_config: Arc<Serve
             }
             Some(query) => {
                 if filter::should_filter(&query.name, &block_list) {
-                    let mut res_buffer = BytePacketBuffer::new();
-                    let style = logging::get_highlight_style(ErrorHighlight);
+                    let mut response_buffer = BytePacketBuffer::new();
+                    let style: Style = HighlightStyle::get_style(ErrorHighlight);
 
-                    log::trace!("{style}BLOCK{style:#}: {:?}:{:?}", query.name, query.record_type);
+                    let num = query.record_type.to_num();
+                    log::trace!("{style}BLOCK{style:#}: {}:{}", query.name, num);
 
                     packet.header.result_code = ResultCode::NXDOMAIN;
-                    match packet.write(&mut res_buffer) {
+                    match packet.write(&mut response_buffer) {
                         Ok(_) => {
-                            match res_buffer.get_range(0, res_buffer.pos) {
+                            match response_buffer.get_range(0, response_buffer.pos) {
                                 Ok(data) => {
                                     if let Err(err) = socket.send_to(&data, &src).await {
                                         log::error!("Reply to '{}' failed {:?}", &src, err);
@@ -166,15 +177,13 @@ async fn do_lookup(buf: &[u8], remote_host: String, connection_timeout: i64) -> 
     let duration = Duration::from_millis(connection_timeout as u64);
     let socket = UdpSocket::bind(("0.0.0.0", 0)).await?;
 
-    let mut hasher = DefaultHasher::new();
-    std::thread::current().id().hash(&mut hasher);
-    log::trace!("[{:?}]Creating outbound UDP socket for: {:?}", hasher.finish(), remote_host);
+    log::trace!("UDP socket bound to {:?} for: {:?}", socket.local_addr(), remote_host);
 
     let data: Result<Vec<u8>> = timeout(duration, async {
         socket.send_to(buf, remote_host.to_string()).await?;
-        let mut res = [0; 4096];
-        let len = socket.recv(&mut res).await?;
-        Ok(res[..len].to_vec())
+        let mut response = [0; INTERNAL_CONFIG.max_udp_packet_size as usize];
+        let length = socket.recv(&mut response).await?;
+        Ok(response[..length].to_vec())
     }).await?;
 
     match data {

@@ -1,0 +1,13 @@
+# This file is used as the template for config_struct generation
+server:
+  worker_thread_count: 0
+udp_proxy:
+  timeout: 0
+  bind: string
+  dns_hosts:
+    - string
+  domain_block_lists:
+    - string
+logging:
+  enabled: true
+  level: string

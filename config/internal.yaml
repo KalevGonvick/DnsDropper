@@ -1,0 +1,4 @@
+# Config constants internal systems
+default_server_config_dir: "config/server.yaml"
+max_udp_packet_size: 4096
+worker_thread_name: "WORKER"

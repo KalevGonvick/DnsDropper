@@ -1,7 +1,8 @@
 use std::io::{Error, ErrorKind, Result};
 use std::net::{Ipv4Addr, Ipv6Addr};
+use crate::internal::INTERNAL_CONFIG;
 
-const PACKET_SIZE: usize = 4096;
+const PACKET_SIZE: usize = INTERNAL_CONFIG.max_udp_packet_size as usize;
 
 // TODO - Modern DNS is no longer limited to 512 bytes in size, we should handle larger amounts.
 pub struct BytePacketBuffer {

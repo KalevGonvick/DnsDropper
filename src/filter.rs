@@ -25,8 +25,6 @@ pub(crate) async fn load_block_list(block_list: &[Cow<'_, str>]) -> HashSet<Filt
     let mut complete_block_list: HashSet<Filter> = HashSet::new();
 
     for source in block_list {
-        trace!("Found block-list source: {}", source);
-
         match Url::parse(source) {
             Ok(url) => {
                 if url.scheme().eq("file") {
@@ -90,6 +88,7 @@ fn parse_block_list_content(complete_block_list: &mut HashSet<Filter>, content: 
         let split_line: Vec<&str> = line.split_whitespace().collect();
 
         // we expect lines to follow the pattern of <addr>/s<domain>/n
+        // TODO make it more relaxed format wise. regex?
         if split_line.len() > 1 && split_line.len() < 3 {
             filter = Filter {
                 address: match split_line.get(0) {
