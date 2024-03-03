@@ -4,30 +4,28 @@ use log::Level;
 use std::io::Write;
 use crate::logging::HighlightStyle::{DebugHighlight, ErrorHighlight, InfoHighlight, TraceHighlight, WarnHighLight};
 
-const DARK_GREY_HIGHLIGHT: Style = Style::new()
+pub const DARK_GREY_HIGHLIGHT: Style = Style::new()
     .fg_color(Some(Color::Ansi256(Ansi256Color(8))));
-const RED_HIGHLIGHT: Style = Style::new()
+pub const RED_HIGHLIGHT: Style = Style::new()
     .fg_color(Some(Color::Ansi256(Ansi256Color(9))));
-const GREEN_HIGHLIGHT: Style = Style::new()
+pub const GREEN_HIGHLIGHT: Style = Style::new()
     .fg_color(Some(Color::Ansi256(Ansi256Color(10))));
-const YELLOW_HIGHLIGHT: Style = Style::new()
+pub const YELLOW_HIGHLIGHT: Style = Style::new()
     .fg_color(Some(Color::Ansi256(Ansi256Color(11))));
-const BLUE_HIGHLIGHT: Style = Style::new()
+pub const BLUE_HIGHLIGHT: Style = Style::new()
     .fg_color(Some(Color::Ansi256(Ansi256Color(12))));
-const PURPLE_HIGHLIGHT: Style = Style::new()
+pub const PURPLE_HIGHLIGHT: Style = Style::new()
     .fg_color(Some(Color::Ansi256(Ansi256Color(13))));
-const AQUA_HIGHLIGHT: Style = Style::new()
+pub const AQUA_HIGHLIGHT: Style = Style::new()
     .fg_color(Some(Color::Ansi256(Ansi256Color(14))));
-
-const DEFAULT_STYLE: Style = BLUE_HIGHLIGHT;
-const TRACE_STYLE: Style = PURPLE_HIGHLIGHT.bold();
-const INFO_STYLE: Style = BLUE_HIGHLIGHT.bold();
-const ERROR_STYLE: Style = RED_HIGHLIGHT.bold();
-const DEBUG_STYLE: Style = GREEN_HIGHLIGHT.bold();
-const WARN_STYLE: Style = YELLOW_HIGHLIGHT.bold();
-const TIMESTAMP_STYLE: Style = DARK_GREY_HIGHLIGHT.underline();
-const THREAD_NAME_STYLE: Style = AQUA_HIGHLIGHT.bold();
-const MODULE_INFO_STYLE: Style = YELLOW_HIGHLIGHT.italic();
+pub const DEFAULT_STYLE: Style = BLUE_HIGHLIGHT;
+pub const TRACE_STYLE: Style = PURPLE_HIGHLIGHT.bold();
+pub const INFO_STYLE: Style = BLUE_HIGHLIGHT.bold();
+pub const ERROR_STYLE: Style = RED_HIGHLIGHT.bold();
+pub const DEBUG_STYLE: Style = GREEN_HIGHLIGHT.bold();
+pub const WARN_STYLE: Style = YELLOW_HIGHLIGHT.bold();
+pub const TIMESTAMP_STYLE: Style = DARK_GREY_HIGHLIGHT.underline();
+pub const THREAD_NAME_STYLE: Style = AQUA_HIGHLIGHT.bold();
 
 pub enum HighlightStyle {
     TraceHighlight,
@@ -82,21 +80,18 @@ pub fn setup(level: &str) {
                 }
             };
 
-
-
             let ts = buf.timestamp_millis();
-            let mod_path = record.module_path();
-            let mod_line = record.line();
             let lvl = record.level();
             let args = record.args();
 
-            writeln!(buf, "[{TIMESTAMP_STYLE}{}{TIMESTAMP_STYLE:#}][{THREAD_NAME_STYLE}{}{THREAD_NAME_STYLE:#}][{level_colour}{}{level_colour:#}][{MODULE_INFO_STYLE}{}.rs::{}{MODULE_INFO_STYLE:#}] {DEFAULT_STYLE}{}{DEFAULT_STYLE:#}",
-                     ts,
-                     thread::current().name().unwrap_or_default().to_ascii_uppercase(),
-                     lvl,
-                     mod_path.unwrap_or_default(),
-                     mod_line.unwrap_or_default(),
-                     args)
+            writeln!(
+                buf,
+                "[{TIMESTAMP_STYLE}{}{TIMESTAMP_STYLE:#}][{level_colour}{}{level_colour:#}][{THREAD_NAME_STYLE}{}{THREAD_NAME_STYLE:#}] {DEFAULT_STYLE}{}{DEFAULT_STYLE:#}",
+                ts,
+                lvl,
+                thread::current().name().unwrap_or_default().to_ascii_uppercase(),
+                args
+            )
         }).init();
 }
 

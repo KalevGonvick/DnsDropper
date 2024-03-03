@@ -14,5 +14,5 @@ pub struct InternalConfig {
 pub const INTERNAL_CONFIG: InternalConfig = InternalConfig {
     default_server_config_dir: Cow::Borrowed("config/server.yaml"),
     max_udp_packet_size: 4096,
-    worker_thread_name: Cow::Borrowed("WORKER"),
+    worker_thread_name: Cow::Borrowed("WT"),
 };

@@ -1,14 +1,4 @@
-<pre>
-████████▄  ███▄▄▄▄      ▄████████      ████████▄     ▄████████  ▄██████▄     ▄███████▄    ▄███████▄    ▄████████    ▄████████
-███   ▀███ ███▀▀▀██▄   ███    ███      ███   ▀███   ███    ███ ███    ███   ███    ███   ███    ███   ███    ███   ███    ███
-███    ███ ███   ███   ███    █▀       ███    ███   ███    ███ ███    ███   ███    ███   ███    ███   ███    █▀    ███    ███
-███    ███ ███   ███   ███             ███    ███  ▄███▄▄▄▄██▀ ███    ███   ███    ███   ███    ███  ▄███▄▄▄      ▄███▄▄▄▄██▀
-███    ███ ███   ███ ▀███████████      ███    ███ ▀▀███▀▀▀▀▀   ███    ███ ▀█████████▀  ▀█████████▀  ▀▀███▀▀▀     ▀▀███▀▀▀▀▀   
-███    ███ ███   ███          ███      ███    ███ ▀███████████ ███    ███   ███          ███          ███    █▄  ▀███████████
-███   ▄███ ███   ███    ▄█    ███      ███   ▄███   ███    ███ ███    ███   ███          ███          ███    ███   ███    ███
-████████▀   ▀█   █▀   ▄████████▀       ████████▀    ███    ███  ▀██████▀   ▄████▀       ▄████▀        ██████████   ███    ███
-███    ███  
-</pre>
+<img src="./docs/dns_dropper_banner01.png" alt="DNSDropper">
 
 ## What is it?
 DNSDropper is a tool for anyone looking for a light-weight dns proxy with filtering capabilities. Like blocking ads! It works by being a proxy in-between you and your normal DNS service, filtering any DNS requests for domains in your black list.
@@ -23,7 +13,6 @@ DNSDropper uses in a single configuration file that is divided up by major featu
 |   logging    |     Configure logging output.     |  [server breakdown](docs/config.section.logging.md)  |
 
 You can also find examples of different configurations under the ```test/``` folder.
-
 
 ## How to use (standard configuration)
 1. Configure your ```server.yaml``` to fit your needs, and run the service.

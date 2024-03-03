@@ -12,76 +12,87 @@ pub(crate) struct Filter {
     pub domain: String,
 }
 
-pub(crate) fn should_filter(domain: &String, filter_list: &HashSet<Filter>) -> bool {
-    for entry in filter_list {
-        if &entry.domain == domain {
+impl Filter {
+    fn is_domain_matching(&self, in_domain: &String) -> bool {
+        return self.domain.eq(in_domain);
+    }
+}
+
+pub(crate) fn should_filter(
+    domain: &String,
+    filter_list: &HashSet<Filter>
+) -> bool {
+    for filter in filter_list {
+        if filter.is_domain_matching(domain) {
             return true;
         }
     }
     return false;
 }
 
-pub(crate) async fn load_block_list(block_list: &[Cow<'_, str>]) -> HashSet<Filter> {
+pub(crate) async fn load_filtered_domains(
+    block_list: &[Cow<'_, str>]
+) -> HashSet<Filter> {
     let mut complete_block_list: HashSet<Filter> = HashSet::new();
 
     for source in block_list {
-        match Url::parse(source) {
-            Ok(url) => {
-                if url.scheme().eq("file") {
-                    match fs::read_to_string(source.clone().into_owned()) {
-                        Ok(content) => {
-                            parse_block_list_content(&mut complete_block_list, content)
-                                .unwrap_or_else(|error| error!("Error occurred while trying to parse content from provided url resource: {} {}", source, error));
-                        }
-                        Err(err) => {
-                            error!("Error occurred while reading file '{}': {}", source, err);
-                        }
-                    };
-                } else if url.scheme().eq("http") || url.scheme().eq("https") {
-                    match reqwest::get(source.clone().into_owned()).await {
-                        Ok(res) => {
-                            trace!("Got response from block-list source: {}", source);
-                            if res.status() == StatusCode::OK {
-                                if let Ok(body) = res.text().await {
-                                    parse_block_list_content(&mut complete_block_list, body)
-                                        .unwrap_or_else(|error| error!("Error occurred while trying to parse content from provided url resource: {} {}", source, error));
-                                }
-                            }
-                        }
-                        Err(err) => {
-                            error!("Error occurred while requesting resource from '{}': {}", source, err);
-                        }
-                    };
+
+        if let Ok(url) = Url::parse(source) {
+
+            if url.scheme().eq("file") {
+
+                if let Ok(content) = fs::read_to_string(source.clone().into_owned()) {
+                    parse_block_list_content(&mut complete_block_list, content).unwrap();
                 }
+
+            } else if url.scheme().eq("http") || url.scheme().eq("https") {
+
+                if let Ok(res) = reqwest::get(source.clone().into_owned()).await {
+                    trace!("Got response from block-list source: {}", source);
+
+                    if res.status() == StatusCode::OK {
+
+                        if let Ok(body) = res.text().await {
+                            parse_block_list_content(&mut complete_block_list, body).unwrap();
+                        }
+
+                    } else {
+                        error!("Error! Response was: {}", res.status());
+                    }
+
+                } else {
+                    error!("Error occurred while requesting resource from '{}'", source);
+                };
             }
 
-            Err(_) => {
-                trace!("Provided string '{}' is not a URL, trying as an external file.", source);
-                match fs::File::open(source.clone().into_owned()) {
-                    Ok(file) => {
-                        let mut buf_reader = BufReader::new(file);
-                        let mut body = String::new();
-                        match buf_reader.read_to_string(&mut body) {
-                            Ok(_) => {
-                                parse_block_list_content(&mut complete_block_list, body)
-                                    .unwrap_or_else(|error| error!("Error occurred while trying to parse content from provided local resource: {} {}", source, error));
-                            }
-                            Err(err) => {
-                                error!("Error occurred while reading file '{}': {}", source, err);
-                            }
-                        }
-                    }
-                    Err(err) => {
-                        error!("Error occurred while reading file '{}': {}", source, err);
-                    }
+        } else {
+            trace!("Provided string '{}' is not a URL, trying as an external file.", source);
+
+            if let Ok(file) = fs::File::open(source.clone().into_owned()) {
+                let mut buf_reader = BufReader::new(file);
+                let mut body = String::new();
+
+                if let Ok(_) = buf_reader.read_to_string(&mut body) {
+                    parse_block_list_content(&mut complete_block_list, body).unwrap();
+
+                } else if let Err(err) = buf_reader.read_to_string(&mut body) {
+                    error!("Error occurred while reading file '{}': {}", source, err);
                 }
+
+            } else if let Err(err) = fs::File::open(source.clone().into_owned()) {
+                error!("Error occurred while reading file '{}': {}", source, err);
             }
         };
     }
+
     return complete_block_list;
 }
 
-fn parse_block_list_content(complete_block_list: &mut HashSet<Filter>, content: String) -> Result<()> {
+fn parse_block_list_content(
+    complete_block_list: &mut HashSet<Filter>,
+    content: String
+) -> Result<()> {
+
     let mut filter: Filter;
 
     for line in content.lines() {

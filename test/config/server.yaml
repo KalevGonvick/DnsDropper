@@ -1,9 +1,8 @@
 server:
-  worker_thread_count: 4
+  worker_thread_count: 3
 
 udp_proxy:
   timeout: 2000
-  packet_size: 512
   bind: "127.0.0.1:53"
   dns_hosts:
     - "8.8.8.8:53"
