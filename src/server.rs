@@ -4,11 +4,9 @@ mod filter;
 mod logging;
 mod internal;
 
-use crate::logging::WARN_STYLE;
-use crate::logging::ERROR_STYLE;
+
 use std::borrow::Cow;
-use std::collections::{HashSet, VecDeque};
-use std::env;
+use std::collections::{HashSet};
 use std::io::{Error, ErrorKind};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -16,26 +14,22 @@ use std::time::Duration;
 use tokio::io::Result;
 use tokio::net::UdpSocket;
 use tokio::time::timeout;
+use clap::Parser;
 
 use crate::filter::Filter;
+use crate::logging::WARN_STYLE;
+use crate::logging::ERROR_STYLE;
 use crate::dns::{BytePacketBuffer, DnsPacket, ResultCode};
 use crate::internal::INTERNAL_CONFIG;
 use crate::server_config::ServerConfig;
 
 fn main() -> Result<()> {
-    let mut args: VecDeque<String> = env::args().collect();
+    let args = ClArgs::parse();
     let mut config_dir: String = INTERNAL_CONFIG.default_server_config_dir.to_string();
+    let config_args = args.config;
 
-    // TODO - there is probably a crate for this already. use that.
-    if args.len() > 1 {
-        args.pop_front();
-        while !args.is_empty() {
-            let arg_key: String = args.pop_front().expect("");
-            let arg_value: String = args.pop_front().expect("");
-            if arg_key.eq("--config") || arg_key.eq("-c") {
-                config_dir = arg_value;
-            }
-        }
+    if !config_args.is_empty() {
+        config_dir = config_args;
     }
 
     match ServerConfig::load_from(std::path::Path::new(&config_dir)) {
@@ -222,4 +216,14 @@ async fn do_lookup(buf: &[u8], remote_host: String, connection_timeout: i64) -> 
     } else {
         unreachable!()
     }
+}
+
+// A customizable light-weight DNS proxy with domain filtering capabilities.
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct ClArgs {
+
+    // Path to the config file.
+    #[arg(short, long)]
+    config: String
 }
