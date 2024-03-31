@@ -3,7 +3,7 @@ name = "dns_dropper"
 version = "0.0.1"
 edition = "2021"
 authors = ["kalev gonvick <kalev.gonvick@outlook.com>"]
-description = "DNS"
+description = "Customizable light-weight DNS proxy with domain filtering capabilities."
 license = "MIT"
 readme = "README.md"
 
@@ -18,7 +18,6 @@ keywords = [
     "ad-block",
     "udp"
 ]
-
 
 [profile.release]
 lto = true
