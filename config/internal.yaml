@@ -1,4 +1,10 @@
 # Config constants internal systems
+
+# default config directory
 default_server_config_dir: "config/server.yaml"
+
+# max udp packet size
 max_udp_packet_size: 4096
+
+# worker name prefix displayed in logs
 worker_thread_name: "WT"
