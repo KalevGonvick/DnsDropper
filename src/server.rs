@@ -70,12 +70,6 @@ fn start_server<'a>(
         .on_thread_stop(|| {
             log::debug!("Stopping worker thread.");
         })
-        .on_thread_park(|| {
-            log::trace!("Parking worker thread.");
-        })
-        .on_thread_unpark(|| {
-            log::trace!("Un-parking worker thread.");
-        })
         .enable_io()
         .enable_time()
         .build()?;
