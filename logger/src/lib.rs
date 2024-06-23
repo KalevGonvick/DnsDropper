@@ -1,8 +1,9 @@
 use std::thread;
 use env_logger::fmt::style::{Ansi256Color, Color, Style};
-use log::Level;
 use std::io::Write;
-use crate::logging::HighlightStyle::{DebugHighlight, ErrorHighlight, InfoHighlight, TraceHighlight, WarnHighLight};
+use env_logger::Env;
+use log::Level;
+use HighlightStyle::{DebugHighlight, ErrorHighlight, InfoHighlight, TraceHighlight, WarnHighLight};
 
 pub const DARK_GREY_HIGHLIGHT: Style = Style::new()
     .fg_color(Some(Color::Ansi256(Ansi256Color(8))));
@@ -56,9 +57,7 @@ impl GetStyle for HighlightStyle {
 }
 
 pub fn setup(level: &str) {
-    let level_filter = env_logger::Env::default()
-        .default_filter_or(level);
-
+    let level_filter: Env = Env::default().default_filter_or(level);
     env_logger::builder()
         .parse_env(level_filter)
         .format(|buf, record| {
@@ -95,7 +94,27 @@ pub fn setup(level: &str) {
         }).init();
 }
 
-pub(crate) fn print_title() {
+pub fn log_type<T>(_: &T, level: Level) {
+    match level {
+        Level::Error => {
+            log::error!("{}", std::any::type_name::<T>());
+        }
+        Level::Warn => {
+            log::warn!("{}", std::any::type_name::<T>());
+        }
+        Level::Info => {
+            log::info!("{}", std::any::type_name::<T>());
+        }
+        Level::Debug => {
+            log::debug!("{}", std::any::type_name::<T>());
+        }
+        Level::Trace => {
+            log::trace!("{}", std::any::type_name::<T>());
+        }
+    }
+}
+
+pub fn print_title() {
     let title_style = Style::new().fg_color(Some(Color::Ansi256(Ansi256Color(13))));
     let art = r#"
 ████████▄  ███▄▄▄▄      ▄████████      ████████▄     ▄████████  ▄██████▄     ▄███████▄    ▄███████▄    ▄████████    ▄████████
@@ -109,4 +128,10 @@ pub(crate) fn print_title() {
                                                     ███    ███                                                     ███    ███
 "#;
     println!("{title_style}{}{title_style:#}", art);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
 }

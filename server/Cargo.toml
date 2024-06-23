@@ -1,0 +1,25 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies.config_struct]
+version = "~0.5.0"
+features = ["yaml-parsing"]
+
+[lib]
+name = "server"
+path = "src/server.rs"
+
+[dependencies]
+logger = {path = "../logger"}
+packets = {path = "../packets"}
+tokio = { version = "1.35.1", features = ["rt-multi-thread", "macros", "fs", "io-util", "net", "time", "sync"] }
+serde = { version = "1.0.203", features = ["derive"] }
+reqwest = "0.12.5"
+log = "0.4.21"
+url = "2.5.0"
+serde_yaml = "0.9.34+deprecated"
+futures = "0.3.30"

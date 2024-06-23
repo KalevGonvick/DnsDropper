@@ -1,3 +1,4 @@
+workspace = { members = ["logger", "packets", "server"] }
 [package]
 name = "dns_dropper"
 version = "0.0.1"
@@ -9,7 +10,7 @@ readme = "README.md"
 
 [[bin]]
 name = "dns_dropper"
-path = "src/server.rs"
+path = "src/main.rs"
 
 keywords = [
     "dns",
@@ -25,14 +26,11 @@ codegen-units = 1
 strip = "symbols"
 opt-level = 3
 
-[build-dependencies.config_struct]
-version = "~0.5.0"
-features = ["yaml-parsing"]
-
 [dependencies]
+logger = { path = "./logger" }
+server = { path = "./server" }
 logs = "0.7.1"
 regex = "1.10.3"
-tokio = { version = "1.35.1", features = ["rt-multi-thread", "macros", "fs", "io-util", "net", "time", "sync"] }
 serde_yaml = "0.9.31"
 serde = { version = "1.0.196", features = ["derive"] }
 reqwest = { version = "0.12.2" }
@@ -40,3 +38,4 @@ log = { version = "0.4.17", features = [] }
 env_logger = "0.11.1"
 url = "2.5.0"
 clap = { version = "4.5.4", features = ["derive"] }
+tokio = "1.38.0"

@@ -10,8 +10,8 @@ fn main() -> Result<(), Error> {
     };
 
     config_struct::create_struct(
-        "config/internal.yaml",
-        "src/internal.rs",
+        "template/internal.yaml",
+        "src/config/internal.rs",
         &internal_options).unwrap();
 
     let server_options = StructOptions {
@@ -32,7 +32,7 @@ fn main() -> Result<(), Error> {
     };
 
     config_struct::create_struct(
-        "config/server-config.template.yaml",
-        "src/server_config.rs",
+        "template/server-config.template.yaml",
+        "src/config/server_config.rs",
         &server_options)
 }

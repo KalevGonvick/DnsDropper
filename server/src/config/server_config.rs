@@ -35,7 +35,7 @@ pub struct _Config__udp_proxy {
 
 impl ServerConfig {
     pub fn load() -> Cow<'static, Self> {
-        let filepath = concat!(env!("CARGO_MANIFEST_DIR"), "/config/server-config.template.yaml");
+        let filepath = concat!(env!("CARGO_MANIFEST_DIR"), "/template/server-config.template.yaml");
         Self::load_from(filepath.as_ref()).expect("Failed to load ServerConfig.")
     }
 
