@@ -1,19 +1,31 @@
 use std::borrow::Cow;
 use std::collections::HashSet;
-use std::fs;
-use std::io::{BufReader, Error, ErrorKind, Read, Result};
-use std::ops::Deref;
+use std::{fs, io};
+use std::future::Future;
+use std::io::{BufReader, Error, ErrorKind, Read};
+use std::pin::Pin;
+use std::sync::Arc;
 use log::{error, trace};
 use reqwest::StatusCode;
+use serde::{Deserialize, Serialize};
 use url::Url;
+use packet::BytePacketBuffer;
+use crate::config::server_config::ServerConfig;
+use crate::exchange::Exchange;
+use crate::packet_handler::PacketHandler;
 
-
-pub(crate) struct FilterList {
+struct FilterHandler {
     block_list_sources: Vec<String>
 }
 
-impl FilterList {
-    pub fn new(block_list: &[Cow<'_, str>]) -> FilterList {
+impl PacketHandler for FilterHandler {
+    fn exec(&self, exchange: &mut Exchange) {
+        todo!()
+    }
+}
+
+impl FilterHandler {
+    pub fn new(block_list: &[Cow<'_, str>]) -> FilterHandler {
         let mut real_list: Vec<String>  = Vec::new();
         for borrowed_str in block_list {
             real_list.push(match borrowed_str {
@@ -25,14 +37,12 @@ impl FilterList {
                 }
             });
         }
-        FilterList {
+        FilterHandler {
             block_list_sources: real_list
         }
     }
 
-    pub async fn resolved_block_list(
-        &self
-    ) -> HashSet<Filter> {
+    pub async fn resolved_block_list(&self) -> HashSet<Filter> {
         let mut complete_block_list: HashSet<Filter> = HashSet::new();
         for source in &self.block_list_sources {
             if let Ok(url) = Url::parse(source.as_str()) {
@@ -53,11 +63,7 @@ impl FilterList {
         return complete_block_list;
     }
 
-    async fn handle_file_scheme(
-        &self,
-        source: String,
-        complete_block_list: &mut HashSet<Filter>
-    ) {
+    async fn handle_file_scheme(&self, source: String, complete_block_list: &mut HashSet<Filter>) {
         match fs::File::open(source.clone()) {
             Ok(file) => {
                 let mut buf_reader = BufReader::new(file);
@@ -77,11 +83,7 @@ impl FilterList {
         }
     }
 
-    async fn handle_url_scheme(
-        &self,
-        source: String,
-        complete_block_list: &mut HashSet<Filter>
-    ) {
+    async fn handle_url_scheme(&self, source: String, complete_block_list: &mut HashSet<Filter>) {
         match reqwest::get(source.clone()).await {
             Ok(res) => {
                 trace!("Got response from block-list source: {}", source);
@@ -99,11 +101,7 @@ impl FilterList {
         };
     }
 
-    fn parse_block_list_content(
-        &self,
-        complete_block_list: &mut HashSet<Filter>,
-        content: String
-    ) -> Result<()> {
+    fn parse_block_list_content(&self, complete_block_list: &mut HashSet<Filter>, content: String) -> std::io::Result<()> {
         let mut filter: Filter;
         for line in content.lines() {
             let split_line: Vec<&str> = line.split_whitespace().collect();
@@ -131,7 +129,7 @@ impl FilterList {
 }
 
 #[derive(Hash, Eq, PartialEq, Debug)]
-pub(crate) struct Filter {
+pub struct Filter {
     pub address: String,
     pub domain: String,
 }
@@ -142,10 +140,7 @@ impl Filter {
     }
 }
 
-pub(crate) fn should_filter(
-    domain: &String,
-    filter_list: &HashSet<Filter>
-) -> bool {
+pub fn should_filter(domain: &String, filter_list: &HashSet<Filter>) -> bool {
     for filter in filter_list {
         if filter.is_domain_matching(domain) {
             return true;

@@ -1,177 +1,68 @@
 use std::io::{Error, ErrorKind, Result};
 use std::net::{Ipv4Addr, Ipv6Addr};
-use crate::internal::INTERNAL_CONFIG;
+use crate::BytePacketBuffer;
 
-const PACKET_SIZE: usize = INTERNAL_CONFIG.max_udp_packet_size as usize;
-
-// TODO - Modern DNS is no longer limited to 512 bytes in size, we should handle larger amounts.
-pub struct BytePacketBuffer {
-    pub buf: [u8; PACKET_SIZE],
-    pub pos: usize,
+fn write_qname(buffer: &mut BytePacketBuffer, qname: &str) -> Result<()> {
+    let split_str = qname.split('.').collect::<Vec<&str>>();
+    for label in split_str {
+        let len = label.len();
+        if len > 0x34 {
+            return Err(Error::new(ErrorKind::InvalidInput, "Single label exceeds 63 characters of length"));
+        }
+        buffer.write_u8(len as u8)?;
+        for b in label.as_bytes() {
+            buffer.write_u8(*b)?;
+        }
+    }
+    buffer.write_u8(0)?;
+    Ok(())
 }
 
-impl BytePacketBuffer {
-    pub fn new() -> BytePacketBuffer {
-        BytePacketBuffer {
-            buf: [0; PACKET_SIZE],
-            pos: 0,
-        }
-    }
+fn read_qname(buffer: &mut BytePacketBuffer, outstr: &mut String) -> Result<()> {
+    let mut pos = buffer.pos();
+    let mut jumped = false;
+    let mut delim = "";
+    loop {
+        let len = buffer.get(pos)?;
 
-    pub fn pos(&self) -> usize {
-        self.pos
-    }
-
-    fn step(&mut self, steps: usize) {
-        self.pos += steps;
-    }
-
-    fn seek(&mut self, pos: usize) {
-        self.pos = pos;
-    }
-
-    fn read(&mut self) -> Result<u8> {
-
-        if self.pos >= PACKET_SIZE {
-            return Err(Error::new(ErrorKind::InvalidInput, "End of buffer"));
-        }
-
-        let res = self.buf[self.pos];
-        self.pos += 1;
-        Ok(res)
-    }
-
-    fn get(&mut self, pos: usize) -> Result<u8> {
-
-        if pos >= PACKET_SIZE {
-            return Err(Error::new(ErrorKind::InvalidInput, "End of buffer"));
-        }
-
-        Ok(self.buf[pos])
-    }
-
-    pub fn get_range(&mut self, start: usize, len: usize) -> Result<&[u8]> {
-
-        if start + len >= PACKET_SIZE {
-            return Err(Error::new(ErrorKind::InvalidInput, "End of buffer"));
-        }
-
-        Ok(&self.buf[start..start + len])
-    }
-
-    fn read_u16(&mut self) -> Result<u16> {
-        let res = ((self.read()? as u16) << 8) | (self.read()? as u16);
-        Ok(res)
-    }
-
-    fn read_u32(&mut self) -> Result<u32> {
-        let res = ((self.read()? as u32) << 24)
-            | ((self.read()? as u32) << 16)
-            | ((self.read()? as u32) << 8)
-            | ((self.read()? as u32) << 0);
-        Ok(res)
-    }
-
-    fn read_qname(&mut self, outstr: &mut String) -> Result<()> {
-        let mut pos = self.pos();
-        let mut jumped = false;
-        let mut delim = "";
-        loop {
-            let len = self.get(pos)?;
-
-            // A two byte sequence, where the two highest bits of the first byte is
-            // set, represents an offset relative to the start of the buffer. We
-            // handle this by jumping to the offset, setting a flag to indicate
-            // that we shouldn't update the shared buffer position once done.
-            if (len & 0xC0) == 0xC0 {
-                // When a jump is performed, we only modify the shared buffer
-                // position once, and avoid making the change later on.
-                if !jumped {
-                    self.seek(pos + 2);
-                }
-
-                let b2 = self.get(pos + 1)? as u16;
-                let offset = (((len as u16) ^ 0xC0) << 8) | b2;
-                pos = offset as usize;
-                jumped = true;
-                continue;
+        // A two byte sequence, where the two highest bits of the first byte is
+        // set, represents an offset relative to the start of the buffer. We
+        // handle this by jumping to the offset, setting a flag to indicate
+        // that we shouldn't update the shared buffer position once done.
+        if (len & 0xC0) == 0xC0 {
+            // When a jump is performed, we only modify the shared buffer
+            // position once, and avoid making the change later on.
+            if !jumped {
+                buffer.seek(pos + 2);
             }
 
-            pos += 1;
-
-            // Names are terminated by an empty label of length 0
-            if len == 0 {
-                break;
-            }
-
-            outstr.push_str(delim);
-
-            let str_buffer = self.get_range(pos, len as usize)?;
-            outstr.push_str(&String::from_utf8_lossy(str_buffer).to_lowercase());
-            delim = ".";
-            pos += len as usize;
+            let b2 = buffer.get(pos + 1)? as u16;
+            let offset = (((len as u16) ^ 0xC0) << 8) | b2;
+            pos = offset as usize;
+            jumped = true;
+            continue;
         }
 
-        if !jumped {
-            self.seek(pos);
+        pos += 1;
+
+        // Names are terminated by an empty label of length 0
+        if len == 0 {
+            break;
         }
 
-        Ok(())
+        outstr.push_str(delim);
+
+        let str_buffer = buffer.get_range(pos, len as usize)?;
+        outstr.push_str(&String::from_utf8_lossy(str_buffer).to_lowercase());
+        delim = ".";
+        pos += len as usize;
     }
 
-    fn write(&mut self, val: u8) -> Result<()> {
-        if self.pos >= PACKET_SIZE {
-            return Err(Error::new(ErrorKind::InvalidInput, "End of buffer"));
-        }
-        self.buf[self.pos] = val;
-        self.pos += 1;
-        Ok(())
+    if !jumped {
+        buffer.seek(pos);
     }
 
-    fn write_u8(&mut self, val: u8) -> Result<()> {
-        self.write(val)?;
-        Ok(())
-    }
-
-    fn write_u16(&mut self, val: u16) -> Result<()> {
-        self.write((val >> 8) as u8)?;
-        self.write((val & 0xFF) as u8)?;
-        Ok(())
-    }
-
-    fn write_u32(&mut self, val: u32) -> Result<()> {
-        self.write((val >> 24) as u8)?;
-        self.write((val >> 16) as u8)?;
-        self.write((val >> 8) as u8)?;
-        self.write((val >> 0) as u8)?;
-        Ok(())
-    }
-
-    fn write_qname(&mut self, qname: &str) -> Result<()> {
-        let split_str = qname.split('.').collect::<Vec<&str>>();
-        for label in split_str {
-            let len = label.len();
-            if len > 0x34 {
-                return Err(Error::new(ErrorKind::InvalidInput, "Single label exceeds 63 characters of length"));
-            }
-            self.write_u8(len as u8)?;
-            for b in label.as_bytes() {
-                self.write_u8(*b)?;
-            }
-        }
-        self.write_u8(0)?;
-        Ok(())
-    }
-
-    fn set(&mut self, pos: usize, val: u8) {
-        self.buf[pos] = val;
-    }
-
-    fn set_u16(&mut self, pos: usize, val: u16) -> Result<()> {
-        self.set(pos, (val >> 8) as u8);
-        self.set(pos + 1, val as u8);
-        Ok(())
-    }
+    Ok(())
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -200,34 +91,20 @@ impl ResultCode {
 #[derive(Clone, Debug)]
 pub struct DnsHeader {
     pub id: u16,
-    // 16 bits
     pub recursion_desired: bool,
-    // 1 bit
     pub truncated_message: bool,
-    // 1 bit
     pub authoritative_answer: bool,
-    // 1 bit
     pub opcode: u8,
-    // 4 bits
     pub response: bool,
-    // 1 bit
     pub result_code: ResultCode,
-    // 4 bits
     pub checking_disabled: bool,
-    // 1 bit
     pub authed_data: bool,
-    // 1 bit
     pub z: bool,
-    // 1 bit
     pub recursion_available: bool,
-    // 1 bit
     pub questions: u16,
-    // 16 bits
     pub answers: u16,
-    // 16 bits
     pub authoritative_entries: u16,
-    // 16 bits
-    pub resource_entries: u16,      // 16 bits
+    pub resource_entries: u16,
 }
 
 impl DnsHeader {
@@ -361,7 +238,7 @@ impl DnsQuestion {
     }
 
     pub fn read(&mut self, buffer: &mut BytePacketBuffer) -> Result<()> {
-        buffer.read_qname(&mut self.name)?;
+        read_qname(buffer, &mut self.name)?;
         self.record_type = RecordType::from_num(buffer.read_u16()?); // record_type
         let _ = buffer.read_u16()?; // class
 
@@ -369,7 +246,7 @@ impl DnsQuestion {
     }
 
     pub fn write(&self, buffer: &mut BytePacketBuffer) -> Result<()> {
-        buffer.write_qname(&self.name)?;
+        write_qname(buffer, &self.name)?;
 
         let type_as_num = self.record_type.to_num();
         buffer.write_u16(type_as_num)?;
@@ -430,7 +307,7 @@ pub enum DnsRecord {
 impl DnsRecord {
     pub fn read(buffer: &mut BytePacketBuffer) -> Result<DnsRecord> {
         let mut domain = String::new();
-        buffer.read_qname(&mut domain)?;
+        read_qname(buffer, &mut domain)?;
 
         let record_type_num = buffer.read_u16()?;
         let record_type = RecordType::from_num(record_type_num);
@@ -474,7 +351,7 @@ impl DnsRecord {
             }
             RecordType::NS => {
                 let mut ns = String::new();
-                buffer.read_qname(&mut ns)?;
+                read_qname(buffer, &mut ns)?;
 
                 Ok(DnsRecord::NS {
                     domain,
@@ -484,7 +361,7 @@ impl DnsRecord {
             }
             RecordType::CNAME => {
                 let mut cname = String::new();
-                buffer.read_qname(&mut cname)?;
+                read_qname(buffer, &mut cname)?;
 
                 Ok(DnsRecord::CNAME {
                     domain,
@@ -495,7 +372,7 @@ impl DnsRecord {
             RecordType::MX => {
                 let priority = buffer.read_u16()?;
                 let mut mx = String::new();
-                buffer.read_qname(&mut mx)?;
+                read_qname(buffer, &mut mx)?;
 
                 Ok(DnsRecord::MX {
                     domain,
@@ -536,7 +413,7 @@ impl DnsRecord {
                 ref addr,
                 ttl,
             } => {
-                buffer.write_qname(domain)?;
+                write_qname(buffer, domain)?;
                 buffer.write_u16(RecordType::A.to_num())?;
                 buffer.write_u16(1)?;
                 buffer.write_u32(ttl)?;
@@ -553,7 +430,7 @@ impl DnsRecord {
                 ref host,
                 ttl,
             } => {
-                buffer.write_qname(domain)?;
+                write_qname(buffer, domain)?;
                 buffer.write_u16(RecordType::NS.to_num())?;
                 buffer.write_u16(1)?;
                 buffer.write_u32(ttl)?;
@@ -561,7 +438,7 @@ impl DnsRecord {
                 let pos = buffer.pos();
                 buffer.write_u16(0)?;
 
-                buffer.write_qname(host)?;
+                write_qname(buffer, host)?;
 
                 let size = buffer.pos() - (pos + 2);
                 buffer.set_u16(pos, size as u16)?;
@@ -571,7 +448,7 @@ impl DnsRecord {
                 ref host,
                 ttl,
             } => {
-                buffer.write_qname(domain)?;
+                write_qname(buffer, domain)?;
                 buffer.write_u16(RecordType::CNAME.to_num())?;
                 buffer.write_u16(1)?;
                 buffer.write_u32(ttl)?;
@@ -579,7 +456,7 @@ impl DnsRecord {
                 let pos = buffer.pos();
                 buffer.write_u16(0)?;
 
-                buffer.write_qname(host)?;
+                write_qname(buffer, host)?;
 
                 let size = buffer.pos() - (pos + 2);
                 buffer.set_u16(pos, size as u16)?;
@@ -590,7 +467,7 @@ impl DnsRecord {
                 ref host,
                 ttl,
             } => {
-                buffer.write_qname(domain)?;
+                write_qname(buffer, domain)?;
                 buffer.write_u16(RecordType::MX.to_num())?;
                 buffer.write_u16(1)?;
                 buffer.write_u32(ttl)?;
@@ -599,7 +476,7 @@ impl DnsRecord {
                 buffer.write_u16(0)?;
 
                 buffer.write_u16(priority)?;
-                buffer.write_qname(host)?;
+                write_qname(buffer, host)?;
 
                 let size = buffer.pos() - (pos + 2);
                 buffer.set_u16(pos, size as u16)?;
@@ -609,7 +486,7 @@ impl DnsRecord {
                 ref addr,
                 ttl,
             } => {
-                buffer.write_qname(domain)?;
+                write_qname(buffer, domain)?;
                 buffer.write_u16(RecordType::AAAA.to_num())?;
                 buffer.write_u16(1)?;
                 buffer.write_u32(ttl)?;
@@ -620,7 +497,7 @@ impl DnsRecord {
                 }
             }
             DnsRecord::UNKNOWN { .. } => {
-                logs::warn!("Skipping record: {:?}", self);
+                log::warn!("Skipping record: {:?}", self);
             }
         }
 

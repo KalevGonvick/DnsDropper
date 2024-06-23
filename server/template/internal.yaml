@@ -1,7 +1,7 @@
 # Config constants internal systems
 
-# default config directory
-default_server_config_dir: "config/server.yaml"
+# default template directory
+default_server_config_dir: "template/server.yaml"
 
 # max udp packet size
 max_udp_packet_size: 4096

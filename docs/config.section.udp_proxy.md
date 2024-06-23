@@ -35,6 +35,6 @@ udp_proxy:
   # Add an external and local resource for our block list.
   domain_block_lists:
     - https://raw.githubusercontent.com/blocklistproject/Lists/master/ads.txt
-    - test/config/local_block_list.txt
+    - test/template/local_block_list.txt
 ...
 ```
